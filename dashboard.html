@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>데이터 시각화 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root {
+    --primary: #1a3a5c;
+    --primary-light: #2563a8;
+    --accent: #0ea5e9;
+    --accent2: #10b981;
+    --bg: #f0f4f8;
+    --bg2: #e2e8f0;
+    --card: #ffffff;
+    --border: #cbd5e1;
+    --text: #1e293b;
+    --text2: #475569;
+    --text3: #94a3b8;
+    --danger: #ef4444;
+    --warning: #f59e0b;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* Header */
+  #header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: #fff; padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  #header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  #header .subtitle { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  #header .badge { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; padding: 3px 10px; font-size: 11px; }
+
+  /* Layout */
+  #main { display: flex; height: calc(100vh - 54px); overflow: hidden; }
+  #sidebar { width: 300px; min-width: 260px; background: var(--card); border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; }
+  #content { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* Sidebar sections */
+  .sb-section { border-bottom: 1px solid var(--border); }
+  .sb-title {
+    background: var(--bg); color: var(--primary); font-size: 12px; font-weight: 700;
+    padding: 9px 16px; text-transform: uppercase; letter-spacing: 0.8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .sb-title .icon { width: 16px; height: 16px; opacity: 0.7; }
+  .sb-body { padding: 14px 16px; }
+
+  /* Upload */
+  #upload-zone {
+    border: 2px dashed var(--border); border-radius: 8px; padding: 20px 14px;
+    text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg);
+  }
+  #upload-zone:hover, #upload-zone.drag { border-color: var(--accent); background: #eff8ff; }
+  #upload-zone .up-icon { font-size: 28px; margin-bottom: 8px; }
+  #upload-zone .up-text { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  #upload-zone .up-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  #file-input { display: none; }
+  #file-info { margin-top: 10px; padding: 8px 10px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; font-size: 11px; color: #166534; display: none; }
+
+  /* Variable selectors */
+  label.field-label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 4px; margin-top: 10px; }
+  label.field-label:first-child { margin-top: 0; }
+  select.field-select {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--bg); color: var(--text); font-size: 12px;
+    appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+    cursor: pointer;
+  }
+  select.field-select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px rgba(14,165,233,0.15); }
+
+  /* Chart type buttons */
+  #chart-types { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px; }
+  .ct-btn {
+    border: 1.5px solid var(--border); border-radius: 6px; padding: 7px 4px;
+    background: var(--bg); cursor: pointer; text-align: center; transition: all 0.15s;
+    font-size: 10px; color: var(--text2); line-height: 1.3;
+  }
+  .ct-btn .ct-icon { font-size: 16px; display: block; margin-bottom: 2px; }
+  .ct-btn:hover { border-color: var(--accent); background: #eff8ff; color: var(--primary); }
+  .ct-btn.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+  .ct-btn.disabled { opacity: 0.35; pointer-events: none; }
+  .ct-btn.recommended { border-color: var(--accent2); }
+  .ct-btn.recommended::after { content: '★'; color: var(--accent2); font-size: 8px; margin-left: 2px; }
+
+  /* Filters */
+  .filter-row { margin-top: 8px; }
+  .filter-row label { font-size: 11px; color: var(--text2); font-weight: 600; display: block; margin-bottom: 3px; }
+  .filter-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .filter-tag {
+    padding: 3px 8px; border-radius: 12px; font-size: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text2); transition: all 0.1s;
+  }
+  .filter-tag.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  /* Time slider */
+  #time-section { display: none; }
+  #time-slider { width: 100%; accent-color: var(--accent); margin: 6px 0; }
+  #time-label { font-size: 11px; color: var(--text2); text-align: center; }
+  .play-btn { width: 100%; padding: 6px; background: var(--primary); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; margin-top: 4px; }
+  .play-btn:hover { background: var(--primary-light); }
+
+  /* Buttons */
+  .btn-primary {
+    background: var(--primary); color: #fff; border: none; border-radius: 6px;
+    padding: 9px 16px; cursor: pointer; font-size: 12px; font-weight: 600;
+    width: 100%; margin-top: 10px; transition: background 0.15s;
+  }
+  .btn-primary:hover { background: var(--primary-light); }
+  .btn-secondary {
+    background: var(--bg); color: var(--text2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 12px; cursor: pointer; font-size: 11px; transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: 10px; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
+  .card-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .card-body { padding: 16px 18px; }
+
+  /* Welcome */
+  #welcome { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 300px; text-align: center; color: var(--text3); }
+  #welcome .w-icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+  #welcome h2 { font-size: 18px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+  #welcome p { font-size: 13px; line-height: 1.7; max-width: 420px; }
+
+  /* Table */
+  #preview-section { display: none; }
+  .table-wrap { overflow: auto; max-height: 220px; border-radius: 6px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--primary); color: #fff; padding: 7px 10px; text-align: left; font-weight: 600; position: sticky; top: 0; white-space: nowrap; }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--bg2); white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--bg); }
+  .row-count { font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+  /* Chart */
+  #chart-section { display: none; }
+  #chart-title { font-size: 15px; font-weight: 700; color: var(--primary); text-align: center; margin-bottom: 4px; }
+  #chart-subtitle { font-size: 11px; color: var(--text3); text-align: center; margin-bottom: 12px; }
+  #chart-container { position: relative; background: #fff; border-radius: 8px; padding: 10px; }
+  #myChart { max-height: 380px; }
+
+  /* Heatmap */
+  #heatmap-wrap { overflow: auto; }
+  #heatmap-table { border-collapse: collapse; font-size: 10px; margin: 0 auto; }
+  #heatmap-table th, #heatmap-table td { border: 1px solid #e2e8f0; padding: 5px 8px; text-align: center; min-width: 40px; }
+  #heatmap-table th { background: var(--primary); color: #fff; font-weight: 600; }
+
+  /* Stats */
+  #stats-section { display: none; }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .stat-card { background: var(--bg); border-radius: 8px; padding: 12px; border: 1px solid var(--border); }
+  .stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 18px; font-weight: 700; color: var(--primary); margin: 2px 0; }
+  .stat-sub { font-size: 10px; color: var(--text2); }
+
+  .corr-table { font-size: 11px; border-collapse: collapse; width: 100%; }
+  .corr-table th, .corr-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; }
+  .corr-table th { background: var(--primary); color: #fff; }
+  .corr-high { background: #dcfce7; color: #166534; font-weight: 700; }
+  .corr-mid { background: #fef9c3; color: #854d0e; }
+  .corr-neg { background: #fee2e2; color: #991b1b; }
+
+  .reg-result { background: var(--bg); border-radius: 8px; padding: 14px; border: 1px solid var(--border); font-size: 12px; line-height: 1.8; }
+  .reg-result .reg-eq { font-size: 14px; font-weight: 700; color: var(--primary); font-family: monospace; margin-bottom: 8px; }
+
+  /* Download bar */
+  .dl-bar { display: flex; gap: 8px; justify-content: flex-end; align-items: center; padding-top: 8px; }
+
+  /* Error */
+  .error-msg { background: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-top: 8px; display: none; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 30px; color: var(--text3); font-size: 13px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 2px; border-bottom: 2px solid var(--border); margin-bottom: 14px; }
+  .tab-btn { padding: 8px 16px; font-size: 12px; border: none; background: none; cursor: pointer; color: var(--text2); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .tab-btn:hover { color: var(--primary); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Footer */
+  #footer { background: #1e293b; color: #94a3b8; text-align: center; padding: 8px 20px; font-size: 11px; line-height: 1.6; flex-shrink: 0; }
+  #footer strong { color: #f59e0b; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Responsive tweak */
+  @media (max-width: 768px) {
+    #main { flex-direction: column; }
+    #sidebar { width: 100%; height: auto; overflow-y: visible; }
+    #content { height: auto; }
+  }
+
+  .section-gap { margin-top: 14px; }
+  .inline-row { display: flex; gap: 8px; align-items: center; }
+  .inline-row label { min-width: 60px; }
+  .badge-recommended { background: #dcfce7; color: #166534; font-size: 9px; border-radius: 4px; padding: 1px 5px; font-weight: 700; }
+  #suggest-hint { font-size: 11px; color: var(--accent2); margin-bottom: 8px; display: none; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div>
+    <div class="badge" style="display:inline-block;margin-bottom:4px;">공공기관 업무용</div>
+    <h1>📊 데이터 시각화 대시보드</h1>
+    <div class="subtitle">Data Visualization Dashboard — 로컬 브라우저 전용, 서버 전송 없음</div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button class="btn-secondary" id="btn-dl-png" style="display:none;">⬇ PNG 저장</button>
+    <button class="btn-secondary" id="btn-dl-svg" style="display:none;">⬇ SVG 저장</button>
+    <button class="btn-secondary" id="btn-reset" style="display:none;">↺ 초기화</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+
+    <!-- Upload -->
+    <div class="sb-section">
+      <div class="sb-title">📁 파일 업로드</div>
+      <div class="sb-body">
+        <div id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="this.classList.remove('drag')">
+          <div class="up-icon">☁️</div>
+          <div class="up-text">클릭하거나 파일을 드래그하세요</div>
+          <div class="up-hint">CSV · XLS · XLSX 지원</div>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.xls,.xlsx" onchange="handleFileSelect(event)">
+        <div id="file-info"></div>
+        <div id="error-msg" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- Variable Selection -->
+    <div class="sb-section" id="var-section" style="display:none;">
+      <div class="sb-title">🔢 변수 선택</div>
+      <div class="sb-body">
+        <label class="field-label">X축 (범주/시간)</label>
+        <select class="field-select" id="sel-x" onchange="onVarChange()"><option value="">— 선택 —</option></select>
+        <label class="field-label">Y축 (수치)</label>
+        <select class="field-select" id="sel-y" onchange="onVarChange()"><option value="">— 선택 —</option></select>
+        <label class="field-label">크기 변수 (버블차트용, 선택)</label>
+        <select class="field-select" id="sel-size" onchange="onVarChange()"><option value="">— 없음 —</option></select>
+        <label class="field-label">색상/그룹 변수 (선택)</label>
+        <select class="field-select" id="sel-group" onchange="onVarChange()"><option value="">— 없음 —</option></select>
+      </div>
+    </div>
+
+    <!-- Chart Types -->
+    <div class="sb-section" id="ct-section" style="display:none;">
+      <div class="sb-title">📈 그래프 유형 선택</div>
+      <div class="sb-body">
+        <div id="suggest-hint">★ 데이터에 적합한 유형 추천</div>
+        <div id="chart-types">
+          <button class="ct-btn" data-type="bar-v" onclick="selectChart('bar-v')"><span class="ct-icon">📊</span>세로 막대</button>
+          <button class="ct-btn" data-type="bar-h" onclick="selectChart('bar-h')"><span class="ct-icon">📉</span>가로 막대</button>
+          <button class="ct-btn" data-type="line" onclick="selectChart('line')"><span class="ct-icon">📈</span>꺾은선</button>
+          <button class="ct-btn" data-type="pie" onclick="selectChart('pie')"><span class="ct-icon">🥧</span>파이</button>
+          <button class="ct-btn" data-type="doughnut" onclick="selectChart('doughnut')"><span class="ct-icon">🍩</span>도넛</button>
+          <button class="ct-btn" data-type="radar" onclick="selectChart('radar')"><span class="ct-icon">🕸️</span>레이더</button>
+          <button class="ct-btn" data-type="scatter" onclick="selectChart('scatter')"><span class="ct-icon">🔵</span>산점도</button>
+          <button class="ct-btn" data-type="bubble" onclick="selectChart('bubble')"><span class="ct-icon">🫧</span>버블</button>
+          <button class="ct-btn" data-type="heatmap" onclick="selectChart('heatmap')"><span class="ct-icon">🟥</span>히트맵</button>
+          <button class="ct-btn" data-type="area" onclick="selectChart('area')"><span class="ct-icon">🏔️</span>영역형</button>
+        </div>
+        <button class="btn-primary" id="btn-draw" onclick="drawChart()" disabled>그래프 그리기</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="sb-section" id="filter-section" style="display:none;">
+      <div class="sb-title">🔽 필터 / 슬라이서</div>
+      <div class="sb-body" id="filter-body"></div>
+    </div>
+
+    <!-- Time Slider -->
+    <div class="sb-section" id="time-section">
+      <div class="sb-title">⏱ 시점 슬라이더</div>
+      <div class="sb-body">
+        <div id="time-label">—</div>
+        <input type="range" id="time-slider" min="0" max="0" value="0" oninput="onTimeSlide(this.value)">
+        <button class="play-btn" id="play-btn" onclick="togglePlay()">▶ 재생</button>
+      </div>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="sb-section" id="stat-toggle-section" style="display:none;">
+      <div class="sb-title">📐 통계 분석</div>
+      <div class="sb-body">
+        <button class="btn-primary" style="margin-top:0;" onclick="showStats()">통계 분석 실행</button>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- Welcome -->
+    <div id="welcome">
+      <div class="w-icon">📂</div>
+      <h2>데이터 파일을 업로드하세요</h2>
+      <p>왼쪽 패널에서 CSV, XLS 또는 XLSX 파일을 업로드하면<br>
+         데이터 미리보기와 다양한 시각화 옵션을 제공합니다.</p>
+      <p style="margin-top:12px;font-size:12px;color:#94a3b8;">
+        지원 그래프: 세로/가로 막대 · 꺾은선 · 파이 · 도넛 · 레이더 · 산점도 · 버블 · 히트맵 · 영역형
+      </p>
+    </div>
+
+    <!-- Preview -->
+    <div class="card" id="preview-section">
+      <div class="card-header">
+        <span class="card-title">📋 데이터 미리보기</span>
+        <span id="preview-meta" style="font-size:11px;color:var(--text3);"></span>
+      </div>
+      <div class="card-body">
+        <div class="table-wrap">
+          <table id="preview-table"></table>
+        </div>
+        <div class="row-count" id="row-count"></div>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card" id="chart-section">
+      <div class="card-header">
+        <span class="card-title" id="chart-title-label">그래프</span>
+        <div class="dl-bar">
+          <button class="btn-secondary" id="btn-dl-png2" onclick="downloadPNG()">⬇ PNG</button>
+          <button class="btn-secondary" onclick="downloadSVG()">⬇ SVG</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="chart-subtitle" style="font-size:11px;color:var(--text3);margin-bottom:10px;"></div>
+        <div id="chart-container">
+          <canvas id="myChart"></canvas>
+          <div id="heatmap-wrap" style="display:none;padding:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card" id="stats-section">
+      <div class="card-header">
+        <span class="card-title">📐 통계 분석 결과</span>
+      </div>
+      <div class="card-body">
+        <div class="tab-bar">
+          <button class="tab-btn active" onclick="switchTab('tab-summary')">요약 통계</button>
+          <button class="tab-btn" onclick="switchTab('tab-corr')">상관 분석</button>
+          <button class="tab-btn" onclick="switchTab('tab-reg')">회귀 분석</button>
+        </div>
+        <div id="tab-summary" class="tab-panel active">
+          <div id="summary-content"></div>
+        </div>
+        <div id="tab-corr" class="tab-panel">
+          <div id="corr-content"></div>
+        </div>
+        <div id="tab-reg" class="tab-panel">
+          <div id="reg-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- Footer -->
+<div id="footer">
+  <strong>⚠ 개인정보 및 내부자료 주의</strong>　이 도구는 로컬 브라우저에서만 동작하며 서버로 데이터를 전송하지 않습니다.
+  그러나 <strong>개인정보(이름·주민번호·연락처 등)</strong>나 <strong>비공개 내부자료</strong>는 업로드하지 마십시오.
+  화면 공유나 스크린샷으로 데이터가 노출될 수 있으니 주의하시기 바랍니다.
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+// State
+// ────────────────────────────────────────────────
+let rawData = [];          // original parsed rows
+let filteredData = [];     // after filter
+let columns = [];          // column names
+let numericCols = [];      // numeric column names
+let dateCols = [];         // date column names
+let categoryCols = [];     // categorical columns
+let currentChart = null;
+let currentChartType = null;
+let timeValues = [];       // sorted unique time values
+let timeIndex = 0;
+let playTimer = null;
+let activeFilters = {};    // col -> Set of values
+const PALETTE = [
+  '#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6',
+  '#06b6d4','#f97316','#ec4899','#84cc16','#6366f1',
+  '#14b8a6','#e11d48','#d97706','#7c3aed','#0284c7'
+];
+
+// ────────────────────────────────────────────────
+// File Handling
+// ────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('drag'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) processFile(f);
+}
+function handleFileSelect(e) {
+  const f = e.target.files[0];
+  if (f) processFile(f);
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  showError('');
+  if (!['csv','xls','xlsx'].includes(ext)) { showError('지원하지 않는 파일 형식입니다. CSV, XLS, XLSX 파일을 업로드하세요.'); return; }
+
+  const info = document.getElementById('file-info');
+  info.style.display = 'block';
+  info.textContent = `✅ ${file.name} (${(file.size/1024).toFixed(1)} KB) 로드 중…`;
+
+  if (ext === 'csv') {
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true, dynamicTyping: true,
+      complete: r => { if (!r.data || r.data.length === 0) { showError('데이터가 없거나 파싱 오류가 발생했습니다.'); return; } initData(r.data, file.name); },
+      error: e => showError('CSV 파싱 오류: ' + e.message)
+    });
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, { defval: null });
+        if (!data || data.length === 0) { showError('데이터가 없거나 파싱 오류가 발생했습니다.'); return; }
+        initData(data, file.name);
+      } catch(err) { showError('엑셀 파싱 오류: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// ────────────────────────────────────────────────
+// Init Data
+// ────────────────────────────────────────────────
+function initData(data, filename) {
+  rawData = data;
+  columns = Object.keys(data[0]);
+  analyzeColumns();
+  buildFilters();
+  applyFilters();
+  showPreview();
+  buildVarSelectors();
+  buildFilterUI();
+  detectTimeColumn();
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('preview-section').style.display = 'block';
+  document.getElementById('var-section').style.display = 'block';
+  document.getElementById('ct-section').style.display = 'block';
+  document.getElementById('filter-section').style.display = 'block';
+  document.getElementById('stat-toggle-section').style.display = 'block';
+  document.getElementById('btn-reset').style.display = '';
+  const info = document.getElementById('file-info');
+  info.textContent = `✅ ${filename} — ${data.length}행 · ${columns.length}열`;
+  document.getElementById('preview-meta').textContent = `${data.length}행 × ${columns.length}열`;
+}
+
+function analyzeColumns() {
+  numericCols = []; dateCols = []; categoryCols = [];
+  columns.forEach(col => {
+    const vals = rawData.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== '');
+    const numCount = vals.filter(v => !isNaN(parseFloat(v)) && isFinite(v)).length;
+    if (numCount / vals.length > 0.7) { numericCols.push(col); return; }
+    const dateCount = vals.filter(v => {
+      if (v instanceof Date) return true;
+      const s = String(v);
+      return /^\d{4}[-/]\d{1,2}/.test(s) || /^\d{4}년/.test(s) || /^\d{4}$/.test(s) || /^\d{4}-Q\d/.test(s);
+    }).length;
+    if (dateCount / vals.length > 0.5) { dateCols.push(col); return; }
+    categoryCols.push(col);
+  });
+}
+
+function parseDate(v) {
+  if (v instanceof Date) return v;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-Q(\d)$/);
+  if (m) return new Date(+m[1], (+m[2]-1)*3, 1);
+  const m2 = s.match(/^(\d{4})년\s*(\d{1,2})월/);
+  if (m2) return new Date(+m2[1], +m2[2]-1, 1);
+  const m3 = s.match(/^(\d{4})$/);
+  if (m3) return new Date(+m3[1], 0, 1);
+  return new Date(s);
+}
+
+// ────────────────────────────────────────────────
+// Preview Table
+// ────────────────────────────────────────────────
+function showPreview() {
+  const tbl = document.getElementById('preview-table');
+  const maxRows = 50;
+  let html = '<tr>' + columns.map(c => `<th title="${c}">${c.length > 18 ? c.slice(0,16)+'…' : c}</th>`).join('') + '</tr>';
+  const preview = rawData.slice(0, maxRows);
+  preview.forEach(row => {
+    html += '<tr>' + columns.map(c => {
+      const v = row[c];
+      const s = v === null || v === undefined ? '' : String(v);
+      return `<td title="${s}">${s.length > 20 ? s.slice(0,18)+'…' : s}</td>`;
+    }).join('') + '</tr>';
+  });
+  tbl.innerHTML = html;
+  document.getElementById('row-count').textContent = `총 ${rawData.length}행 표시 중 (최대 ${Math.min(maxRows,rawData.length)}행 미리보기)`;
+}
+
+// ────────────────────────────────────────────────
+// Variable Selectors
+// ────────────────────────────────────────────────
+function buildVarSelectors() {
+  const xSel = document.getElementById('sel-x');
+  const ySel = document.getElementById('sel-y');
+  const szSel = document.getElementById('sel-size');
+  const grpSel = document.getElementById('sel-group');
+
+  const xOpts = [...dateCols, ...categoryCols, ...numericCols];
+  xSel.innerHTML = '<option value="">— 선택 —</option>' + xOpts.map(c => `<option>${c}</option>`).join('');
+  ySel.innerHTML = '<option value="">— 선택 —</option>' + numericCols.map(c => `<option>${c}</option>`).join('');
+  szSel.innerHTML = '<option value="">— 없음 —</option>' + numericCols.map(c => `<option>${c}</option>`).join('');
+  grpSel.innerHTML = '<option value="">— 없음 —</option>' + [...categoryCols,...dateCols].map(c => `<option>${c}</option>`).join('');
+
+  // Auto-select first date or category for X, first numeric for Y
+  if (dateCols.length) xSel.value = dateCols[0];
+  else if (categoryCols.length) xSel.value = categoryCols[0];
+  if (numericCols.length) ySel.value = numericCols[0];
+  if (numericCols.length > 1) szSel.value = numericCols[1];
+  onVarChange();
+}
+
+function onVarChange() {
+  const x = document.getElementById('sel-x').value;
+  const y = document.getElementById('sel-y').value;
+  const sz = document.getElementById('sel-size').value;
+  recommendChartTypes(x, y, sz);
+  document.getElementById('btn-draw').disabled = !(x && y);
+}
+
+function recommendChartTypes(x, y, sz) {
+  const isDateX = dateCols.includes(x);
+  const isCatX = categoryCols.includes(x);
+  const isNumX = numericCols.includes(x);
+  const hasSz = !!sz;
+
+  const recommendations = [];
+  const hints = [];
+
+  if (isDateX) { recommendations.push('line','area','bar-v'); hints.push('시계열 데이터 → 꺾은선/영역형 추천'); }
+  if (isCatX) { recommendations.push('bar-v','bar-h','pie','doughnut','radar'); hints.push('범주형 X축 → 막대/파이 추천'); }
+  if (isNumX && y) { recommendations.push('scatter'); hints.push('수치형 X·Y → 산점도 추천'); }
+  if (hasSz) { recommendations.push('bubble'); hints.push('크기 변수 있음 → 버블차트 추천'); }
+  if (numericCols.length >= 2) { recommendations.push('heatmap'); }
+
+  const hintEl = document.getElementById('suggest-hint');
+  hintEl.style.display = hints.length ? 'block' : 'none';
+  hintEl.textContent = hints.length ? '★ 추천: ' + hints.join(' / ') : '';
+
+  document.querySelectorAll('.ct-btn').forEach(btn => {
+    const t = btn.dataset.type;
+    btn.classList.remove('recommended','active');
+    if (recommendations.includes(t)) btn.classList.add('recommended');
+  });
+  if (recommendations[0] && !currentChartType) selectChart(recommendations[0]);
+}
+
+function selectChart(type) {
+  currentChartType = type;
+  document.querySelectorAll('.ct-btn').forEach(b => b.classList.toggle('active', b.dataset.type === type));
+}
+
+// ────────────────────────────────────────────────
+// Filters
+// ────────────────────────────────────────────────
+function buildFilters() {
+  activeFilters = {};
+  categoryCols.forEach(col => {
+    const vals = [...new Set(rawData.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== ''))].slice(0, 30);
+    activeFilters[col] = new Set(vals.map(String));
+  });
+}
+
+function buildFilterUI() {
+  const body = document.getElementById('filter-body');
+  const filterCols = [...categoryCols].slice(0, 4);
+  if (!filterCols.length) { body.innerHTML = '<div style="color:var(--text3);font-size:11px;">범주형 컬럼이 없습니다</div>'; return; }
+
+  let html = '';
+  filterCols.forEach(col => {
+    const vals = [...new Set(rawData.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== ''))].slice(0, 15);
+    html += `<div class="filter-row"><label>${col}</label><div class="filter-tags">`;
+    html += `<span class="filter-tag active" data-col="${col}" data-val="__ALL__" onclick="toggleFilter('${col}','__ALL__',this)">전체</span>`;
+    vals.forEach(v => {
+      html += `<span class="filter-tag active" data-col="${col}" data-val="${v}" onclick="toggleFilter('${col}','${escapeHtml(String(v))}',this)">${String(v).length>12?String(v).slice(0,10)+'…':v}</span>`;
+    });
+    html += '</div></div>';
+  });
+  body.innerHTML = html;
+
+  // Numeric range sliders
+  numericCols.slice(0, 2).forEach(col => {
+    const vals = rawData.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+    if (!vals.length) return;
+    const mn = Math.min(...vals), mx = Math.max(...vals);
+    const id = 'range_' + col.replace(/\W/g,'_');
+    body.innerHTML += `<div class="filter-row">
+      <label>${col} 범위: <span id="${id}_label">${mn.toFixed(1)} ~ ${mx.toFixed(1)}</span></label>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <input type="range" id="${id}_min" min="${mn}" max="${mx}" value="${mn}" step="${((mx-mn)/100).toFixed(2)}" style="flex:1;accent-color:var(--accent);" oninput="onRangeChange('${col}','${id}',${mn},${mx})">
+        <input type="range" id="${id}_max" min="${mn}" max="${mx}" value="${mx}" step="${((mx-mn)/100).toFixed(2)}" style="flex:1;accent-color:var(--accent2);" oninput="onRangeChange('${col}','${id}',${mn},${mx})">
+      </div>
+    </div>`;
+    activeFilters['__range_' + col] = { min: mn, max: mx };
+  });
+}
+
+function onRangeChange(col, id, mn, mx) {
+  const minV = parseFloat(document.getElementById(id+'_min').value);
+  const maxV = parseFloat(document.getElementById(id+'_max').value);
+  document.getElementById(id+'_label').textContent = minV.toFixed(1) + ' ~ ' + maxV.toFixed(1);
+  activeFilters['__range_'+col] = { min: Math.min(minV,maxV), max: Math.max(minV,maxV) };
+  applyFilters();
+  if (currentChartType && document.getElementById('chart-section').style.display !== 'none') drawChart();
+}
+
+function toggleFilter(col, val, el) {
+  if (val === '__ALL__') {
+    const allVals = [...new Set(rawData.map(r => r[col]).filter(v => v !== null && v !== undefined && v !== ''))].map(String);
+    allVals.forEach(v => activeFilters[col].add(v));
+    el.closest('.filter-tags').querySelectorAll('.filter-tag').forEach(t => t.classList.add('active'));
+  } else {
+    if (activeFilters[col].has(val)) activeFilters[col].delete(val);
+    else activeFilters[col].add(val);
+    el.classList.toggle('active', activeFilters[col].has(val));
+  }
+  applyFilters();
+  if (currentChartType && document.getElementById('chart-section').style.display !== 'none') drawChart();
+}
+
+function applyFilters() {
+  filteredData = rawData.filter(row => {
+    return Object.keys(activeFilters).every(key => {
+      if (key.startsWith('__range_')) {
+        const col = key.replace('__range_','');
+        const v = parseFloat(row[col]);
+        if (isNaN(v)) return true;
+        const r = activeFilters[key];
+        return v >= r.min && v <= r.max;
+      }
+      const set = activeFilters[key];
+      if (!set || set.size === 0) return true;
+      const v = row[key];
+      return set.has(String(v === null || v === undefined ? '' : v));
+    });
+  });
+}
+
+// ────────────────────────────────────────────────
+// Time Slider
+// ────────────────────────────────────────────────
+function detectTimeColumn() {
+  const ts = document.getElementById('time-section');
+  const xCol = document.getElementById('sel-x').value || (dateCols.length ? dateCols[0] : null);
+  if (!xCol || !dateCols.includes(xCol)) { ts.style.display = 'none'; return; }
+  timeValues = [...new Set(rawData.map(r => r[xCol]).filter(v => v !== null && v !== undefined && v !== ''))];
+  try {
+    timeValues.sort((a,b) => parseDate(a) - parseDate(b));
+  } catch(e) {
+    timeValues.sort();
+  }
+  if (timeValues.length < 2) { ts.style.display = 'none'; return; }
+  ts.style.display = 'block';
+  const slider = document.getElementById('time-slider');
+  slider.max = timeValues.length - 1;
+  slider.value = timeValues.length - 1;
+  timeIndex = timeValues.length - 1;
+  document.getElementById('time-label').textContent = String(timeValues[timeIndex]);
+}
+
+function onTimeSlide(val) {
+  timeIndex = parseInt(val);
+  const xCol = document.getElementById('sel-x').value;
+  document.getElementById('time-label').textContent = String(timeValues[timeIndex]);
+  if (currentChartType && document.getElementById('chart-section').style.display !== 'none') drawChart();
+}
+
+let playing = false;
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('play-btn');
+  if (playing) {
+    btn.textContent = '⏸ 정지';
+    playTimer = setInterval(() => {
+      timeIndex = (timeIndex + 1) % timeValues.length;
+      document.getElementById('time-slider').value = timeIndex;
+      document.getElementById('time-label').textContent = String(timeValues[timeIndex]);
+      drawChart();
+      if (timeIndex === timeValues.length - 1) { playing = false; btn.textContent = '▶ 재생'; clearInterval(playTimer); }
+    }, 800);
+  } else {
+    btn.textContent = '▶ 재생';
+    clearInterval(playTimer);
+  }
+}
+
+// ────────────────────────────────────────────────
+// Data Aggregation
+// ────────────────────────────────────────────────
+function isScoreLike(colName) {
+  return /만족도|점수|score|rating|평점/i.test(colName);
+}
+
+function aggregateData(xCol, yCol, data) {
+  const isDate = dateCols.includes(xCol);
+  const isCat = categoryCols.includes(xCol) || isDate;
+  if (!isCat) return null; // raw for scatter
+
+  // Group by xCol
+  const map = new Map();
+  const countMap = new Map();
+  data.forEach(row => {
+    const x = row[xCol];
+    if (x === null || x === undefined || x === '') return;
+    const y = parseFloat(row[yCol]);
+    if (isNaN(y)) return;
+    const k = String(x);
+    map.set(k, (map.get(k) || 0) + y);
+    countMap.set(k, (countMap.get(k) || 0) + 1);
+  });
+
+  let keys = [...map.keys()];
+  if (isDate) {
+    keys.sort((a,b) => { try { return parseDate(a) - parseDate(b); } catch(e) { return a.localeCompare(b); } });
+  }
+
+  const useAvg = isScoreLike(yCol);
+  const labels = keys;
+  const values = keys.map(k => useAvg ? map.get(k) / countMap.get(k) : map.get(k));
+  return { labels, values, useAvg };
+}
+
+function getTimeFilteredData() {
+  const xCol = document.getElementById('sel-x').value;
+  if (!dateCols.includes(xCol) || timeValues.length === 0) return filteredData;
+  const tv = String(timeValues[timeIndex]);
+  return filteredData.filter(r => String(r[xCol]) === tv);
+}
+
+// ────────────────────────────────────────────────
+// Draw Chart
+// ────────────────────────────────────────────────
+function drawChart() {
+  const xCol = document.getElementById('sel-x').value;
+  const yCol = document.getElementById('sel-y').value;
+  const szCol = document.getElementById('sel-size').value;
+  const grpCol = document.getElementById('sel-group').value;
+  if (!xCol || !yCol) { showError('X축과 Y축 변수를 모두 선택하세요.'); return; }
+  showError('');
+
+  detectTimeColumn();
+  const data = dateCols.includes(xCol) && timeValues.length > 0 ? getTimeFilteredData() : filteredData;
+  if (!data.length) { showError('필터 조건에 해당하는 데이터가 없습니다.'); return; }
+
+  document.getElementById('chart-section').style.display = 'block';
+  document.getElementById('btn-dl-png').style.display = '';
+  document.getElementById('btn-dl-svg').style.display = '';
+
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+  document.getElementById('myChart').style.display = 'none';
+  document.getElementById('heatmap-wrap').style.display = 'none';
+
+  const titleMap = {
+    'bar-v': '세로 막대그래프', 'bar-h': '가로 막대그래프', 'line': '꺾은선 그래프',
+    'area': '영역형 그래프', 'pie': '파이 차트', 'doughnut': '도넛 차트',
+    'radar': '레이더 차트', 'scatter': '산점도', 'bubble': '버블 차트', 'heatmap': '히트맵'
+  };
+  const timeStr = dateCols.includes(xCol) && timeValues.length > 0 ? ` (${timeValues[timeIndex]})` : '';
+  const aggResult = aggregateData(xCol, yCol, data);
+  const aggLabel = aggResult && aggResult.useAvg ? '평균' : '합계';
+  document.getElementById('chart-title-label').textContent = `${yCol} ${aggResult ? `(${aggLabel})` : ''} — ${xCol}${timeStr} [${titleMap[currentChartType]||''}]`;
+  document.getElementById('chart-subtitle').textContent = `데이터 ${data.length}행 | 필터 적용 중`;
+
+  if (currentChartType === 'heatmap') { drawHeatmap(xCol, yCol, data); return; }
+  if (currentChartType === 'scatter' || currentChartType === 'bubble') { drawScatterBubble(xCol, yCol, szCol, grpCol, data); return; }
+
+  if (!aggResult) { showError('집계할 수 없는 데이터입니다.'); return; }
+  const { labels, values } = aggResult;
+
+  document.getElementById('myChart').style.display = 'block';
+  const ctx = document.getElementById('myChart').getContext('2d');
+  const isHorizontal = currentChartType === 'bar-h';
+  const isPie = currentChartType === 'pie' || currentChartType === 'doughnut';
+  const isRadar = currentChartType === 'radar';
+  const isArea = currentChartType === 'area';
+
+  let type = currentChartType;
+  if (type === 'bar-v') type = 'bar';
+  if (type === 'bar-h') type = 'bar';
+  if (type === 'area') type = 'line';
+
+  const bgColors = isPie || isRadar ? labels.map((_,i) => PALETTE[i % PALETTE.length]) : PALETTE[0];
+  const borderColors = isPie || isRadar ? labels.map((_,i) => PALETTE[i % PALETTE.length]) : PALETTE[0];
+
+  const datasets = [{
+    label: yCol,
+    data: values,
+    backgroundColor: isPie || isRadar ? bgColors : isArea ? PALETTE[0]+'55' : PALETTE[0]+'cc',
+    borderColor: isPie || isRadar ? borderColors : PALETTE[0],
+    borderWidth: isPie ? 2 : 2,
+    fill: isArea,
+    tension: 0.35,
+    pointRadius: type === 'line' ? 4 : 0,
+    pointHoverRadius: 6
+  }];
+
+  // Group datasets
+  if (grpCol && !isPie && !isRadar) {
+    const groups = [...new Set(data.map(r => String(r[grpCol])).filter(v => v !== 'null' && v !== 'undefined' && v !== ''))];
+    if (groups.length > 1 && groups.length <= 10) {
+      const allLabels = [...new Set(data.map(r => String(r[xCol])).filter(v => v !== 'null' && v !== ''))];
+      if (dateCols.includes(xCol)) allLabels.sort((a,b) => { try { return parseDate(a)-parseDate(b); } catch(e) { return 0; } });
+      datasets.splice(0, 1);
+      groups.forEach((grp, gi) => {
+        const subData = data.filter(r => String(r[grpCol]) === grp);
+        const map2 = new Map();
+        subData.forEach(r => {
+          const x = String(r[xCol]);
+          const y = parseFloat(r[yCol]);
+          if (!isNaN(y)) map2.set(x, (map2.get(x)||0)+y);
+        });
+        datasets.push({
+          label: grp,
+          data: allLabels.map(l => map2.get(l) || 0),
+          backgroundColor: PALETTE[gi % PALETTE.length] + (isArea?'55':'cc'),
+          borderColor: PALETTE[gi % PALETTE.length],
+          borderWidth: 2, fill: isArea, tension: 0.35, pointRadius: type==='line'?4:0, pointHoverRadius:6
+        });
+      });
+      // rebuild labels
+      currentChart = new Chart(ctx, buildConfig(type, allLabels, datasets, isHorizontal, isPie, isRadar, xCol, yCol, aggResult));
+      return;
+    }
+  }
+
+  currentChart = new Chart(ctx, buildConfig(type, labels, datasets, isHorizontal, isPie, isRadar, xCol, yCol, aggResult));
+}
+
+function buildConfig(type, labels, datasets, isHorizontal, isPie, isRadar, xCol, yCol, aggResult) {
+  const useAvg = aggResult && aggResult.useAvg;
+  return {
+    type,
+    data: { labels, datasets },
+    options: {
+      indexAxis: isHorizontal ? 'y' : 'x',
+      responsive: true,
+      maintainAspectRatio: true,
+      animation: { duration: 600, easing: 'easeInOutQuart' },
+      plugins: {
+        legend: { display: isPie || isRadar || datasets.length > 1, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx2 => {
+              const v = typeof ctx2.raw === 'object' ? ctx2.raw.y : ctx2.raw;
+              return ` ${ctx2.dataset.label || yCol}: ${typeof v === 'number' ? v.toLocaleString('ko-KR', {maximumFractionDigits:2}) : v}${useAvg?' (평균)':''}`
+            }
+          }
+        },
+        datalabels: {
+          display: isPie,
+          formatter: (val, ctx2) => {
+            const sum = ctx2.dataset.data.reduce((a,b) => a+(+b||0), 0);
+            return sum ? ((val/sum)*100).toFixed(1)+'%' : '';
+          },
+          color: '#fff', font: { weight: 'bold', size: 11 }
+        }
+      },
+      scales: isPie || isRadar ? {} : {
+        x: { grid: { color: '#e2e8f0' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
+        y: {
+          grid: { color: '#e2e8f0' }, beginAtZero: true,
+          ticks: { font: { size: 11 }, callback: v => typeof v === 'number' ? v.toLocaleString('ko-KR') : v }
+        }
+      }
+    },
+    plugins: [ChartDataLabels]
+  };
+}
+
+function drawScatterBubble(xCol, yCol, szCol, grpCol, data) {
+  document.getElementById('myChart').style.display = 'block';
+  const ctx = document.getElementById('myChart').getContext('2d');
+  const isBubble = currentChartType === 'bubble' && szCol;
+  const type = isBubble ? 'bubble' : 'scatter';
+
+  const grpVals = grpCol ? [...new Set(data.map(r => String(r[grpCol])).filter(v => v !== 'null'&&v!=='undefined'&&v!==''))] : ['데이터'];
+  const szVals = szCol ? data.map(r => parseFloat(r[szCol])).filter(v => !isNaN(v)) : [];
+  const szMin = szVals.length ? Math.min(...szVals) : 1;
+  const szMax = szVals.length ? Math.max(...szVals) : 1;
+  const szRange = szMax - szMin || 1;
+
+  const datasets = grpVals.map((grp, gi) => {
+    const rows = grpCol ? data.filter(r => String(r[grpCol]) === grp) : data;
+    return {
+      label: grp,
+      data: rows.map(r => {
+        const x = parseFloat(r[xCol]), y = parseFloat(r[yCol]);
+        if (isNaN(x)||isNaN(y)) return null;
+        const obj = { x, y };
+        if (isBubble) { const s = parseFloat(r[szCol]); obj.r = isNaN(s) ? 5 : 4 + ((s-szMin)/szRange)*20; }
+        return obj;
+      }).filter(Boolean),
+      backgroundColor: PALETTE[gi % PALETTE.length] + '99',
+      borderColor: PALETTE[gi % PALETTE.length],
+      pointRadius: 5, pointHoverRadius: 7
+    };
+  });
+
+  currentChart = new Chart(ctx, {
+    type, data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: true, animation: { duration: 500 },
+      plugins: { legend: { display: grpVals.length > 1, position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: c => ` ${c.dataset.label}: (${c.parsed.x.toFixed(2)}, ${c.parsed.y.toFixed(2)})${isBubble&&szCol?` sz:${c.raw.r?.toFixed(1)}`:''}` } },
+        datalabels: { display: false }
+      },
+      scales: {
+        x: { title: { display: true, text: xCol, font: { size: 11 } }, grid: { color: '#e2e8f0' } },
+        y: { title: { display: true, text: yCol, font: { size: 11 } }, grid: { color: '#e2e8f0' } }
+      }
+    }, plugins: [ChartDataLabels]
+  });
+}
+
+function drawHeatmap(xCol, yCol, data) {
+  document.getElementById('heatmap-wrap').style.display = 'block';
+  const cols = numericCols.slice(0, 12);
+  if (cols.length < 2) { showError('히트맵은 수치형 변수가 2개 이상 필요합니다.'); return; }
+
+  // Correlation matrix
+  const matrix = {};
+  cols.forEach(c1 => {
+    matrix[c1] = {};
+    cols.forEach(c2 => {
+      matrix[c1][c2] = pearsonCorr(data.map(r => parseFloat(r[c1])), data.map(r => parseFloat(r[c2])));
+    });
+  });
+
+  let html = '<table id="heatmap-table"><tr><th></th>' + cols.map(c => `<th>${c.length>10?c.slice(0,8)+'…':c}</th>`).join('') + '</tr>';
+  cols.forEach(c1 => {
+    html += `<tr><th>${c1.length>10?c1.slice(0,8)+'…':c1}</th>`;
+    cols.forEach(c2 => {
+      const v = matrix[c1][c2];
+      const abs = Math.abs(v);
+      const r = v > 0 ? Math.round(255*(1-abs)) : 255;
+      const g = v > 0 ? Math.round(200*abs+55) : Math.round(255*(1-abs));
+      const b = v > 0 ? Math.round(255*(1-abs)) : Math.round(200*abs+55);
+      const bg = isNaN(v) ? '#f8f8f8' : `rgb(${r},${g},${b})`;
+      const txt = isNaN(v) ? '—' : v.toFixed(2);
+      const color = abs > 0.5 ? '#fff' : '#333';
+      html += `<td style="background:${bg};color:${color};font-weight:${abs>0.5?'700':'400'};">${txt}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table>';
+  document.getElementById('heatmap-wrap').innerHTML = html;
+}
+
+// ────────────────────────────────────────────────
+// Statistics
+// ────────────────────────────────────────────────
+function showStats() {
+  document.getElementById('stats-section').style.display = 'block';
+  buildSummary();
+  buildCorr();
+  buildReg();
+}
+
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function buildSummary() {
+  if (!numericCols.length) { document.getElementById('summary-content').innerHTML = '<p style="color:var(--text3)">수치형 컬럼이 없습니다.</p>'; return; }
+  let html = '';
+  numericCols.forEach(col => {
+    const vals = filteredData.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+    if (!vals.length) return;
+    vals.sort((a,b) => a-b);
+    const n = vals.length;
+    const sum = vals.reduce((a,b) => a+b, 0);
+    const mean = sum / n;
+    const med = n%2===0 ? (vals[n/2-1]+vals[n/2])/2 : vals[Math.floor(n/2)];
+    const vari = vals.reduce((a,b) => a+(b-mean)**2, 0) / (n-1);
+    const std = Math.sqrt(vari);
+    const q1 = vals[Math.floor(n*0.25)];
+    const q3 = vals[Math.floor(n*0.75)];
+
+    html += `<div style="margin-bottom:16px;"><div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;">${col}</div>`;
+    html += '<div class="stats-grid">';
+    [['n', n, '개'],['합계', sum.toFixed(2),''],['평균', mean.toFixed(2),''],['중앙값', med.toFixed(2),''],
+     ['표준편차', std.toFixed(2),''],['최솟값', vals[0].toFixed(2),''],['최댓값', vals[n-1].toFixed(2),''],
+     ['Q1', q1?.toFixed(2)||'—',''],['Q3', q3?.toFixed(2)||'—','']].forEach(([l,v,u]) => {
+      html += `<div class="stat-card"><div class="stat-label">${l}</div><div class="stat-value">${typeof v==='number'?v.toLocaleString('ko-KR'):v}</div><div class="stat-sub">${u}</div></div>`;
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('summary-content').innerHTML = html || '<p style="color:var(--text3)">데이터 없음</p>';
+}
+
+function pearsonCorr(xs, ys) {
+  const n = xs.length;
+  const pairs = [];
+  for (let i = 0; i < n; i++) { if (!isNaN(xs[i]) && !isNaN(ys[i])) pairs.push([xs[i], ys[i]]); }
+  if (pairs.length < 3) return NaN;
+  const mx = pairs.reduce((a,p) => a+p[0], 0) / pairs.length;
+  const my = pairs.reduce((a,p) => a+p[1], 0) / pairs.length;
+  const num = pairs.reduce((a,p) => a+(p[0]-mx)*(p[1]-my), 0);
+  const dx = Math.sqrt(pairs.reduce((a,p) => a+(p[0]-mx)**2, 0));
+  const dy = Math.sqrt(pairs.reduce((a,p) => a+(p[1]-my)**2, 0));
+  return (dx && dy) ? num/(dx*dy) : NaN;
+}
+
+function buildCorr() {
+  const cols = numericCols.slice(0, 10);
+  if (cols.length < 2) { document.getElementById('corr-content').innerHTML = '<p style="color:var(--text3)">수치형 컬럼이 2개 이상 필요합니다.</p>'; return; }
+
+  let html = '<div style="overflow:auto;"><table class="corr-table"><tr><th></th>' + cols.map(c => `<th>${c.length>12?c.slice(0,10)+'…':c}</th>`).join('') + '</tr>';
+  cols.forEach(c1 => {
+    html += `<tr><th>${c1.length>12?c1.slice(0,10)+'…':c1}</th>`;
+    cols.forEach(c2 => {
+      const v = pearsonCorr(filteredData.map(r=>parseFloat(r[c1])), filteredData.map(r=>parseFloat(r[c2])));
+      const cls = isNaN(v)?'':Math.abs(v)>=0.7?'corr-high':Math.abs(v)>=0.4?'corr-mid':v<-0.4?'corr-neg':'';
+      html += `<td class="${cls}">${isNaN(v)?'—':v.toFixed(3)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table></div>';
+  html += '<div style="font-size:11px;color:var(--text3);margin-top:8px;">🟢 |r|≥0.7 강한 양의 상관 / 🔴 음의 상관 / 🟡 |r|≥0.4 중간</div>';
+  document.getElementById('corr-content').innerHTML = html;
+}
+
+function buildReg() {
+  const xCol = document.getElementById('sel-x').value;
+  const yCol = document.getElementById('sel-y').value;
+  if (!numericCols.includes(xCol) || !numericCols.includes(yCol)) {
+    document.getElementById('reg-content').innerHTML = '<p style="color:var(--text3)">회귀분석은 X축과 Y축 모두 수치형 변수여야 합니다. 변수 선택에서 수치형 변수를 선택하세요.</p>'; return;
+  }
+  const pairs = filteredData.map(r => [parseFloat(r[xCol]), parseFloat(r[yCol])]).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+  if (pairs.length < 3) { document.getElementById('reg-content').innerHTML = '<p style="color:var(--text3)">데이터가 부족합니다 (최소 3개 필요).</p>'; return; }
+
+  const n = pairs.length;
+  const sx = pairs.reduce((a,p) => a+p[0], 0);
+  const sy = pairs.reduce((a,p) => a+p[1], 0);
+  const sx2 = pairs.reduce((a,p) => a+p[0]**2, 0);
+  const sxy = pairs.reduce((a,p) => a+p[0]*p[1], 0);
+  const slope = (n*sxy - sx*sy) / (n*sx2 - sx**2);
+  const intercept = (sy - slope*sx) / n;
+  const yMean = sy / n;
+  const yHats = pairs.map(p => slope*p[0]+intercept);
+  const ss_res = pairs.reduce((a,p,i) => a+(p[1]-yHats[i])**2, 0);
+  const ss_tot = pairs.reduce((a,p) => a+(p[1]-yMean)**2, 0);
+  const r2 = 1 - ss_res/ss_tot;
+  const r = pearsonCorr(pairs.map(p=>p[0]), pairs.map(p=>p[1]));
+  const se = Math.sqrt(ss_res/(n-2));
+  const seSl = se / Math.sqrt(sx2 - sx**2/n);
+  const tStat = slope / seSl;
+
+  const sign = intercept >= 0 ? '+' : '';
+  document.getElementById('reg-content').innerHTML = `
+    <div class="reg-result">
+      <div class="reg-eq">ŷ = ${slope.toFixed(4)} × ${xCol} ${sign}${intercept.toFixed(4)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+        <div class="stat-card"><div class="stat-label">결정계수 R²</div><div class="stat-value">${r2.toFixed(4)}</div><div class="stat-sub">${r2>=0.7?'강한 설명력':r2>=0.4?'중간 설명력':'낮은 설명력'}</div></div>
+        <div class="stat-card"><div class="stat-label">피어슨 r</div><div class="stat-value">${r.toFixed(4)}</div><div class="stat-sub">${Math.abs(r)>=0.7?'강한 상관':Math.abs(r)>=0.4?'중간 상관':'약한 상관'}</div></div>
+        <div class="stat-card"><div class="stat-label">기울기</div><div class="stat-value">${slope.toFixed(4)}</div><div class="stat-sub">t = ${tStat.toFixed(3)}</div></div>
+        <div class="stat-card"><div class="stat-label">절편</div><div class="stat-value">${intercept.toFixed(4)}</div><div class="stat-sub">n = ${n}</div></div>
+        <div class="stat-card"><div class="stat-label">표준오차</div><div class="stat-value">${se.toFixed(4)}</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;">단순선형회귀 (OLS) | 선택 변수: ${xCol} → ${yCol}</div>
+    </div>`;
+}
+
+// ────────────────────────────────────────────────
+// Download
+// ────────────────────────────────────────────────
+function downloadPNG() {
+  if (!currentChart) { showError('먼저 그래프를 생성하세요.'); return; }
+  const link = document.createElement('a');
+  link.download = 'chart.png';
+  link.href = document.getElementById('myChart').toDataURL('image/png');
+  link.click();
+}
+
+function downloadSVG() {
+  const hmWrap = document.getElementById('heatmap-wrap');
+  if (hmWrap.style.display !== 'none') {
+    // Export heatmap as SVG via foreignObject
+    const w = hmWrap.scrollWidth + 40, h = hmWrap.scrollHeight + 40;
+    const xml = new XMLSerializer().serializeToString(hmWrap);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${xml}</foreignObject></svg>`;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'heatmap.svg'; a.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  if (!currentChart) { showError('먼저 그래프를 생성하세요.'); return; }
+  // Approximate SVG from canvas
+  const dataUrl = document.getElementById('myChart').toDataURL('image/png');
+  const canvas = document.getElementById('myChart');
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}"><image href="${dataUrl}" width="${canvas.width}" height="${canvas.height}"/></svg>`;
+  const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'chart.svg'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ────────────────────────────────────────────────
+// Util
+// ────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  if (msg) { el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
+  else el.style.display = 'none';
+}
+
+function escapeHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function resetAll() {
+  rawData = []; filteredData = []; columns = []; numericCols = []; dateCols = []; categoryCols = [];
+  currentChartType = null;
+  if (currentChart) { currentChart.destroy(); currentChart = null; }
+  if (playTimer) clearInterval(playTimer); playing = false;
+  document.getElementById('welcome').style.display = 'flex';
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('chart-section').style.display = 'none';
+  document.getElementById('stats-section').style.display = 'none';
+  document.getElementById('var-section').style.display = 'none';
+  document.getElementById('ct-section').style.display = 'none';
+  document.getElementById('filter-section').style.display = 'none';
+  document.getElementById('time-section').style.display = 'none';
+  document.getElementById('stat-toggle-section').style.display = 'none';
+  document.getElementById('btn-reset').style.display = 'none';
+  document.getElementById('btn-dl-png').style.display = 'none';
+  document.getElementById('btn-dl-svg').style.display = 'none';
+  document.getElementById('file-info').style.display = 'none';
+  document.getElementById('file-input').value = '';
+  showError('');
+}
+
+document.getElementById('btn-reset').addEventListener('click', resetAll);
+document.getElementById('btn-dl-png').addEventListener('click', downloadPNG);
+document.getElementById('btn-dl-svg').addEventListener('click', downloadSVG);
+</script>
+</body>
+</html>
