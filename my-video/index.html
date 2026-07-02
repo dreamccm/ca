@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Claude Design 소개</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/core/dist/hyperframe.runtime.iife.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@hyperframes/shader-transitions/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Claude Design — warm cream + terracotta (Anthropic tone) */
+        --bg: #efeae0;
+        --bg-lite: #f6f2e9;
+        --surface: #fbf8f1;
+        --panel: #e7e0d1;
+        --clay: #cc785c;
+        --clay-deep: #a8543b;
+        --clay-soft: #e3b5a1;
+        --ink: #2b2722;
+        --ink-soft: #8a8073;
+        --sage: #5b8c6e;
+        --line: rgba(43, 39, 34, 0.12);
+        --font-serif: "Gowun Batang", "Newsreader", serif;
+        --font-display: "Newsreader", "Gowun Batang", serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      .scene {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      .scene-content {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        position: relative;
+        z-index: 1;
+      }
+      .clip {
+      }
+
+      .vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 49;
+        background: radial-gradient(
+          125% 125% at 50% 42%,
+          rgba(255, 255, 255, 0) 58%,
+          rgba(43, 39, 34, 0.06) 100%
+        );
+      }
+
+      .serif {
+        font-family: var(--font-serif);
+      }
+      .display {
+        font-family: var(--font-display);
+        font-weight: 500;
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+      .mono {
+        font-family: var(--font-mono);
+        font-weight: 400;
+      }
+
+      /* === Scene 1 · Brand cold open === */
+      #s1-group {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #s1-ring {
+        position: absolute;
+        left: 50%;
+        top: 10px;
+        width: 44px;
+        height: 44px;
+        margin-left: -22px;
+        margin-top: -22px;
+        border-radius: 50%;
+        border: 1.5px solid var(--clay);
+        opacity: 0;
+      }
+      #s1-dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--clay);
+        margin-bottom: 36px;
+      }
+      #s1-wordmark {
+        font-size: 152px;
+        color: var(--ink);
+      }
+      #s1-rule {
+        width: 230px;
+        height: 1.5px;
+        background: var(--line);
+        margin-top: 28px;
+        margin-bottom: 18px;
+      }
+      #s1-sub {
+        font-size: 24px;
+        letter-spacing: 0.55em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        padding-left: 0.55em;
+      }
+
+      /* === Scene 2 · Thesis === */
+      #s2-block {
+        text-align: center;
+        font-family: var(--font-serif);
+        font-weight: 700;
+        color: var(--ink);
+        line-height: 1.16;
+        font-size: 116px;
+        letter-spacing: -0.01em;
+      }
+      #s2-l2 {
+        margin-top: 6px;
+      }
+      #s2-word {
+        position: relative;
+        color: var(--clay);
+        display: inline-block;
+      }
+      #s2-underline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -12px;
+        height: 6px;
+        background: var(--clay-soft);
+        border-radius: 3px;
+        transform-origin: left;
+      }
+      #s2-caret {
+        display: inline-block;
+        width: 6px;
+        height: 92px;
+        background: var(--ink);
+        margin-left: 14px;
+        vertical-align: -16px;
+        opacity: 0;
+      }
+
+      /* === Scene 3 · Type a prompt === */
+      #s3-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 1120px;
+      }
+      #s3-label {
+        align-self: flex-start;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      #s3-label .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--clay);
+      }
+      #s3-label .txt {
+        font-family: var(--font-serif);
+        font-size: 24px;
+        color: var(--ink-soft);
+        letter-spacing: 0.02em;
+      }
+      #s3-panel {
+        width: 100%;
+        background: var(--surface);
+        border: 1.5px solid var(--line);
+        border-radius: 24px;
+        box-shadow: 0 26px 60px rgba(43, 39, 34, 0.1);
+        padding: 28px 28px 28px 40px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+      #s3-field {
+        flex: 1;
+        font-family: var(--font-serif);
+        font-size: 42px;
+        line-height: 1.2;
+        color: var(--ink-soft);
+      }
+      #s3-caret {
+        display: inline-block;
+        width: 3px;
+        height: 42px;
+        background: var(--clay);
+        margin-left: 5px;
+        vertical-align: -9px;
+        opacity: 0;
+      }
+      #s3-send {
+        width: 66px;
+        height: 66px;
+        border-radius: 18px;
+        background: var(--clay);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px rgba(168, 84, 59, 0.32);
+      }
+
+      /* === Scene 4 · Streaming build (hero) === */
+      #s4-stack {
+        position: relative;
+        width: 1200px;
+      }
+      #s4-panel {
+        width: 1200px;
+        height: 660px;
+        background: var(--surface);
+        border: 1.5px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 34px 76px rgba(43, 39, 34, 0.13);
+        padding: 52px 60px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      #s4-status {
+        position: absolute;
+        top: 28px;
+        right: 30px;
+        font-family: var(--font-serif);
+        font-size: 22px;
+      }
+      #s4-status .state {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      #s4-status .state .pip {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      #s4-busy {
+        color: var(--ink-soft);
+      }
+      #s4-busy .pip {
+        background: var(--clay);
+      }
+      #s4-done {
+        position: absolute;
+        top: 0;
+        right: 0;
+        color: var(--sage);
+        visibility: hidden;
+        opacity: 0;
+      }
+      #s4-done .pip {
+        background: var(--sage);
+      }
+      #s4-kicker {
+        font-family: var(--font-mono);
+        font-size: 20px;
+        letter-spacing: 0.3em;
+        color: var(--clay);
+      }
+      #s4-headline {
+        font-family: var(--font-serif);
+        font-weight: 700;
+        font-size: 96px;
+        color: var(--ink);
+        line-height: 1.04;
+        margin-top: 16px;
+        min-height: 104px;
+      }
+      #s4-caret {
+        display: inline-block;
+        width: 5px;
+        height: 80px;
+        background: var(--clay);
+        margin-left: 6px;
+        vertical-align: -14px;
+        opacity: 0;
+      }
+      #s4-bar {
+        height: 6px;
+        width: 150px;
+        background: var(--clay);
+        border-radius: 3px;
+        margin-top: 24px;
+        transform-origin: left;
+      }
+      #s4-body {
+        display: flex;
+        gap: 50px;
+        margin-top: 42px;
+        flex: 1;
+        min-height: 0;
+      }
+      #s4-bullets {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 8px;
+        font-family: var(--font-serif);
+        font-size: 36px;
+      }
+      #s4-b1 {
+        color: var(--ink);
+      }
+      #s4-b2 {
+        color: var(--ink-soft);
+      }
+      #s4-shot {
+        width: 430px;
+        align-self: stretch;
+        border-radius: 12px;
+        overflow: hidden;
+        background: repeating-linear-gradient(135deg, #eae5da 0 12px, #e0dacb 12px 24px);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #s4-shot span {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        letter-spacing: 0.18em;
+        color: var(--ink-soft);
+        text-transform: uppercase;
+      }
+      #s4-caption {
+        position: absolute;
+        left: 2px;
+        bottom: -56px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #s4-caption .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--clay);
+      }
+      #s4-caption .txt {
+        font-family: var(--font-serif);
+        font-size: 30px;
+        color: var(--ink-soft);
+      }
+
+      /* === Scene 5 · Variations === */
+      #s5-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #s5-headline {
+        font-family: var(--font-serif);
+        font-weight: 700;
+        font-size: 58px;
+        color: var(--ink);
+        margin-bottom: 54px;
+      }
+      #s5-headline em {
+        font-style: normal;
+        color: var(--clay);
+      }
+      #s5-row {
+        display: flex;
+        gap: 46px;
+        align-items: flex-start;
+      }
+      .s5-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      .s5-num {
+        font-family: var(--font-mono);
+        font-size: 18px;
+        letter-spacing: 0.3em;
+        color: var(--ink-soft);
+      }
+      .s5-card {
+        position: relative;
+        width: 460px;
+        height: 290px;
+        background: var(--surface);
+        border-radius: 14px;
+        border: 1.5px solid var(--line);
+        box-shadow: 0 16px 40px rgba(43, 39, 34, 0.08);
+        overflow: hidden;
+      }
+      #s5-sel {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        border: 1.5px solid var(--clay);
+        box-shadow:
+          0 0 0 4px rgba(204, 120, 92, 0.14),
+          0 22px 46px rgba(43, 39, 34, 0.1);
+        opacity: 0;
+        z-index: 2;
+      }
+      .s5-bar {
+        border-radius: 5px;
+      }
+      .s5-img {
+        border-radius: 8px;
+        background: repeating-linear-gradient(135deg, #eae5da 0 10px, #e0dacb 10px 20px);
+        border: 1px solid var(--line);
+      }
+      .s5-thumb-a {
+        position: absolute;
+        inset: 0;
+        padding: 28px;
+        display: flex;
+        gap: 20px;
+      }
+      .s5-thumb-a .left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+        justify-content: center;
+      }
+      .s5-thumb-b {
+        position: absolute;
+        inset: 0;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+      .s5-thumb-c {
+        position: absolute;
+        inset: 0;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 13px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* === Scene 6 · Range of outputs === */
+      #s6-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #s6-headline {
+        font-family: var(--font-serif);
+        font-weight: 700;
+        font-size: 60px;
+        color: var(--ink);
+        margin-bottom: 58px;
+      }
+      #s6-headline em {
+        font-style: normal;
+        color: var(--clay);
+      }
+      #s6-row {
+        display: flex;
+        gap: 34px;
+      }
+      .s6-card {
+        width: 300px;
+        height: 330px;
+        background: var(--surface);
+        border-radius: 16px;
+        border: 1.5px solid var(--line);
+        box-shadow: 0 16px 40px rgba(43, 39, 34, 0.07);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+      }
+      .s6-icon {
+        height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .s6-label {
+        font-family: var(--font-serif);
+        font-size: 30px;
+        color: var(--ink);
+      }
+      .ico-deck {
+        position: relative;
+        width: 104px;
+        height: 88px;
+      }
+      .ico-deck .back {
+        position: absolute;
+        left: 18px;
+        top: 0;
+        width: 84px;
+        height: 60px;
+        border-radius: 8px;
+        border: 2px solid var(--ink-soft);
+        background: var(--bg-lite);
+      }
+      .ico-deck .front {
+        position: absolute;
+        left: 0;
+        top: 22px;
+        width: 84px;
+        height: 60px;
+        border-radius: 8px;
+        border: 2px solid var(--clay);
+        background: var(--surface);
+      }
+      .ico-proto {
+        width: 60px;
+        height: 108px;
+        border-radius: 16px;
+        border: 2px solid var(--ink-soft);
+        position: relative;
+        background: var(--bg-lite);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 12px;
+      }
+      .ico-proto .speaker {
+        position: absolute;
+        top: 9px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 18px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--ink-soft);
+      }
+      .ico-proto .btn {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid var(--clay);
+      }
+      .ico-anim {
+        width: 78px;
+        height: 78px;
+        border-radius: 50%;
+        border: 2px solid var(--ink-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ico-anim .tri {
+        width: 0;
+        height: 0;
+        border-top: 13px solid transparent;
+        border-bottom: 13px solid transparent;
+        border-left: 22px solid var(--clay);
+        margin-left: 6px;
+      }
+      .ico-doc {
+        width: 70px;
+        height: 90px;
+        border-radius: 8px;
+        border: 2px solid var(--ink-soft);
+        background: var(--bg-lite);
+        padding: 16px 13px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .ico-doc i {
+        height: 5px;
+        border-radius: 3px;
+        background: var(--ink-soft);
+        display: block;
+      }
+      .ico-doc i.accent {
+        background: var(--clay);
+        width: 66%;
+      }
+      .ico-doc i.short {
+        width: 55%;
+      }
+
+      /* === Scene 7 · Sign-off === */
+      #s7-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #s7-dot {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--clay);
+        margin-bottom: 30px;
+      }
+      #s7-wordmark {
+        font-size: 100px;
+        color: var(--ink);
+      }
+      #s7-lockup {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 22px;
+      }
+      .s7-rule {
+        width: 70px;
+        height: 1.5px;
+        background: var(--line);
+      }
+      #s7-sub {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        letter-spacing: 0.5em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        padding-left: 0.5em;
+      }
+      #s7-tagline {
+        font-family: var(--font-serif);
+        font-size: 40px;
+        color: var(--ink-soft);
+        margin-top: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="main"
+      data-composition-id="main"
+      data-width="1920"
+      data-height="1080"
+      data-start="0"
+      data-duration="35"
+    >
+      <!-- SCENE 1 · 브랜드 콜드오픈 (0-4.8s) — visible from t=0 -->
+      <div class="scene clip" id="s1" data-start="0" data-duration="4.8" data-track-index="0">
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s1-group">
+            <div id="s1-ring"></div>
+            <div id="s1-dot"></div>
+            <div id="s1-wordmark" class="display">Claude</div>
+            <div id="s1-rule"></div>
+            <div id="s1-sub" class="mono">Design</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 2 · 테제 (4.8-9.6s) — hard cut -->
+      <div
+        class="scene clip"
+        id="s2"
+        data-start="4.8"
+        data-duration="4.8"
+        data-track-index="0"
+        style="visibility: hidden"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s2-block">
+            <div id="s2-l1">말하면,</div>
+            <div id="s2-l2">
+              <span id="s2-word">디자인<span id="s2-underline"></span></span
+              >이 됩니다.
+              <span id="s2-caret"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 3 · 프롬프트 입력 (9.6-14.8s) — SHADER ANCHOR -->
+      <div
+        class="scene clip"
+        id="s3"
+        data-start="9.6"
+        data-duration="5.2"
+        data-track-index="0"
+        style="opacity: 0"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s3-wrap">
+            <div id="s3-label">
+              <div class="dot"></div>
+              <div class="txt">새 디자인 시작하기</div>
+            </div>
+            <div id="s3-panel">
+              <div id="s3-field">
+                <span id="s3-typed">Claude에게 무엇이든 말해보세요</span><span id="s3-caret"></span>
+              </div>
+              <div id="s3-send">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 19V5M12 5l-6 6M12 5l6 6"
+                    stroke="#FBF8F1"
+                    stroke-width="2.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 4 · 스트리밍 빌드, 히어로 (14.8-21.8s) — SHADER ANCHOR -->
+      <div
+        class="scene clip"
+        id="s4"
+        data-start="14.8"
+        data-duration="7"
+        data-track-index="0"
+        style="opacity: 0"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s4-stack">
+            <div id="s4-panel">
+              <div id="s4-status">
+                <div id="s4-busy" class="state"><span class="pip"></span>생성 중…</div>
+                <div id="s4-done" class="state"><span class="pip"></span>완료</div>
+              </div>
+              <div id="s4-kicker" class="mono">NEW</div>
+              <div id="s4-headline"><span id="s4-typed"></span><span id="s4-caret"></span></div>
+              <div id="s4-bar"></div>
+              <div id="s4-body">
+                <div id="s4-bullets">
+                  <div id="s4-b1">복잡한 과정을 덜어냈습니다.</div>
+                  <div id="s4-b2">필요한 것만 남겼습니다.</div>
+                </div>
+                <div id="s4-shot"><span>Product Shot</span></div>
+              </div>
+            </div>
+            <div id="s4-caption">
+              <span class="dot"></span>
+              <span class="txt">실시간으로 그려지는 화면</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 5 · 변형안 (21.8-27.0s) — hard cut -->
+      <div
+        class="scene clip"
+        id="s5"
+        data-start="21.8"
+        data-duration="5.2"
+        data-track-index="0"
+        style="visibility: hidden"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s5-wrap">
+            <div id="s5-headline">여러 방향을 <em>한 번에</em></div>
+            <div id="s5-row">
+              <div class="s5-col" id="s5-c1">
+                <div class="s5-num mono">01</div>
+                <div class="s5-card">
+                  <div class="s5-thumb-a">
+                    <div class="left">
+                      <div class="s5-bar" style="width: 40px; height: 8px; background: var(--clay)"></div>
+                      <div class="s5-bar" style="width: 82%; height: 15px; background: var(--ink)"></div>
+                      <div class="s5-bar" style="width: 58%; height: 15px; background: var(--ink)"></div>
+                      <div style="height: 6px"></div>
+                      <div class="s5-bar" style="width: 92%; height: 7px; background: var(--ink-soft)"></div>
+                      <div class="s5-bar" style="width: 72%; height: 7px; background: var(--ink-soft)"></div>
+                    </div>
+                    <div style="width: 150px; display: flex">
+                      <div class="s5-img" style="width: 100%; height: 100%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="s5-col" id="s5-c2">
+                <div class="s5-num mono">02</div>
+                <div class="s5-card">
+                  <div class="s5-thumb-b">
+                    <div style="flex: 1; display: flex">
+                      <div class="s5-img" style="flex: 1"></div>
+                    </div>
+                    <div class="s5-bar" style="width: 72%; height: 15px; background: var(--ink)"></div>
+                    <div style="display: flex; gap: 10px">
+                      <div class="s5-bar" style="width: 40%; height: 7px; background: var(--ink-soft)"></div>
+                      <div class="s5-bar" style="width: 26%; height: 7px; background: var(--clay)"></div>
+                    </div>
+                  </div>
+                  <div id="s5-sel"></div>
+                </div>
+              </div>
+              <div class="s5-col" id="s5-c3">
+                <div class="s5-num mono">03</div>
+                <div class="s5-card">
+                  <div class="s5-thumb-c">
+                    <div style="width: 14px; height: 14px; border-radius: 50%; background: var(--clay)"></div>
+                    <div class="s5-bar" style="width: 210px; height: 15px; background: var(--ink)"></div>
+                    <div class="s5-bar" style="width: 150px; height: 15px; background: var(--ink)"></div>
+                    <div style="height: 4px"></div>
+                    <div class="s5-bar" style="width: 230px; height: 7px; background: var(--ink-soft)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 6 · 출력물 (27.0-31.6s) — SHADER ANCHOR -->
+      <div
+        class="scene clip"
+        id="s6"
+        data-start="27"
+        data-duration="4.6"
+        data-track-index="0"
+        style="opacity: 0"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s6-wrap">
+            <div id="s6-headline">무엇이든, <em>디자인으로.</em></div>
+            <div id="s6-row">
+              <div class="s6-card" id="s6-card1">
+                <div class="s6-icon">
+                  <div class="ico-deck"><div class="back"></div><div class="front"></div></div>
+                </div>
+                <div class="s6-label">슬라이드 덱</div>
+              </div>
+              <div class="s6-card" id="s6-card2">
+                <div class="s6-icon">
+                  <div class="ico-proto"><div class="speaker"></div><div class="btn"></div></div>
+                </div>
+                <div class="s6-label">프로토타입</div>
+              </div>
+              <div class="s6-card" id="s6-card3">
+                <div class="s6-icon">
+                  <div class="ico-anim"><div class="tri"></div></div>
+                </div>
+                <div class="s6-label">애니메이션</div>
+              </div>
+              <div class="s6-card" id="s6-card4">
+                <div class="s6-icon">
+                  <div class="ico-doc"><i class="accent"></i><i></i><i></i><i class="short"></i></div>
+                </div>
+                <div class="s6-label">문서</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 7 · 사인오프 (31.6-35s) — SHADER ANCHOR, final -->
+      <div
+        class="scene clip"
+        id="s7"
+        data-start="31.6"
+        data-duration="3.4"
+        data-track-index="0"
+        style="opacity: 0"
+      >
+        <div class="vignette"></div>
+        <div class="scene-content">
+          <div id="s7-group">
+            <div id="s7-dot"></div>
+            <div id="s7-wordmark" class="display">Claude</div>
+            <div id="s7-lockup">
+              <div class="s7-rule" id="s7-rule-l"></div>
+              <div id="s7-sub">Design</div>
+              <div class="s7-rule" id="s7-rule-r"></div>
+            </div>
+            <div id="s7-tagline">생각을 디자인으로.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      // --- Non-anchor scene visibility toggles (REQUIRED — autoAlpha, not visibility) ---
+      tl.set("#s1", { autoAlpha: 0 }, 4.8);
+      tl.set("#s2", { autoAlpha: 1 }, 4.8);
+      tl.set("#s2", { autoAlpha: 0 }, 9.6);
+      // s3, s4 are shader anchors — HyperShader manages their opacity
+      tl.set("#s3", { opacity: 1 }, 9.6); // first anchor of the group must be explicitly shown
+      tl.set("#s5", { autoAlpha: 1 }, 21.8);
+      tl.set("#s5", { autoAlpha: 0 }, 27.0);
+      tl.set("#s6", { opacity: 1 }, 27.0); // s6 starts the second shader pair
+      // s7 is revealed by the final shader transition
+
+      // === SCENE 1 (0-4.8s) · 브랜드 콜드오픈 ===
+      tl.from("#s1-dot", { scale: 0, duration: 0.9, ease: "back.out(1.7)" }, 0.1);
+      tl.fromTo(
+        "#s1-ring",
+        { scale: 1, opacity: 0.5 },
+        { scale: 13.3, opacity: 0, duration: 1.3, ease: "power2.out" },
+        0.95
+      );
+      tl.from("#s1-wordmark", { y: 18, autoAlpha: 0, duration: 0.8, ease: "power3.out" }, 1.3);
+      tl.from("#s1-rule", { scaleX: 0, duration: 0.8, ease: "power2.out" }, 1.9);
+      tl.from("#s1-sub", { autoAlpha: 0, y: 10, duration: 0.7, ease: "power2.out" }, 2.2);
+      // mid-scene: gentle breathing on the whole lockup
+      tl.to("#s1-group", { scale: 1.014, duration: 4.8, ease: "sine.inOut" }, 0);
+
+      // === SCENE 2 (4.8-9.6s) · 테제 ===
+      tl.from("#s2-l1", { y: 22, autoAlpha: 0, duration: 0.7, ease: "power3.out" }, 5.05);
+      tl.from("#s2-l2", { y: 22, autoAlpha: 0, duration: 0.7, ease: "power3.out" }, 5.5);
+      tl.from("#s2-underline", { scaleX: 0, duration: 0.7, ease: "power2.out" }, 6.3);
+      // caret blink: finite yoyo (0.35s half-period x 10 = 3.5s of blinking)
+      tl.set("#s2-caret", { opacity: 0.7 }, 6.1);
+      tl.to("#s2-caret", { opacity: 0, duration: 0.35, ease: "steps(1)", yoyo: true, repeat: 9 }, 6.1);
+      // mid-scene: slow upward drift
+      tl.to("#s2-block", { y: -12, duration: 4.8, ease: "sine.inOut" }, 4.8);
+
+      // === SCENE 3 (9.6-14.8s) · 프롬프트 입력 — SHADER ANCHOR, no exit tweens ===
+      tl.from("#s3-panel", { y: 24, autoAlpha: 0, duration: 0.7, ease: "power3.out" }, 9.8);
+      tl.from("#s3-label", { autoAlpha: 0, x: -14, duration: 0.6, ease: "power2.out" }, 9.9);
+      tl.from("#s3-send", { scale: 0, duration: 0.7, ease: "back.out(1.7)" }, 9.95);
+      // typing (deterministic counter pattern)
+      var s3Full = "신제품 소개 슬라이드를 만들어줘";
+      var s3Obj = { n: 0 };
+      tl.to(
+        s3Obj,
+        {
+          n: s3Full.length,
+          duration: 2.7,
+          ease: "sine.inOut",
+          onUpdate: function () {
+            var k = Math.round(s3Obj.n);
+            var el = document.getElementById("s3-typed");
+            if (k <= 0) {
+              el.textContent = "Claude에게 무엇이든 말해보세요"; // placeholder
+              el.style.color = "var(--ink-soft)";
+            } else {
+              el.textContent = s3Full.slice(0, k);
+              el.style.color = "var(--ink)";
+            }
+          },
+        },
+        10.4
+      );
+      // caret blink while typing (finite)
+      tl.set("#s3-caret", { opacity: 1 }, 10.1);
+      tl.to("#s3-caret", { opacity: 0, duration: 0.28, ease: "steps(1)", yoyo: true, repeat: 10 }, 10.1);
+      tl.set("#s3-caret", { opacity: 0 }, 13.3);
+      // send pulse after typing completes
+      tl.to("#s3-send", { scale: 1.14, duration: 0.2, ease: "power2.out", yoyo: true, repeat: 1 }, 13.35);
+      // mid-scene: slow zoom of the whole block
+      tl.to("#s3-wrap", { scale: 1.045, duration: 5.2, ease: "sine.inOut" }, 9.6);
+
+      // === SCENE 4 (14.8-21.8s) · 스트리밍 빌드, 히어로 — shader reveals this ===
+      tl.from("#s4-kicker", { y: 8, autoAlpha: 0, duration: 0.5, ease: "power2.out" }, 15.3);
+      // headline typing
+      var s4Full = "더 단순하게.";
+      var s4Obj = { n: 0 };
+      tl.to(
+        s4Obj,
+        {
+          n: s4Full.length,
+          duration: 1.5,
+          ease: "sine.inOut",
+          onUpdate: function () {
+            document.getElementById("s4-typed").textContent = s4Full.slice(0, Math.round(s4Obj.n));
+          },
+        },
+        15.8
+      );
+      tl.set("#s4-caret", { opacity: 0.85 }, 15.6);
+      tl.to("#s4-caret", { opacity: 0, duration: 0.25, ease: "steps(1)", yoyo: true, repeat: 7 }, 15.6);
+      tl.set("#s4-caret", { opacity: 0 }, 17.6);
+      tl.from("#s4-bar", { scaleX: 0, duration: 0.6, ease: "expo.out" }, 17.3);
+      tl.from("#s4-shot", { y: 16, autoAlpha: 0, scale: 0.98, duration: 0.7, ease: "power3.out" }, 16.5);
+      tl.from("#s4-b1", { y: 12, autoAlpha: 0, duration: 0.6, ease: "power2.out" }, 17.7);
+      tl.from("#s4-b2", { y: 12, autoAlpha: 0, duration: 0.6, ease: "power2.out" }, 18.1);
+      tl.from("#s4-caption", { autoAlpha: 0, y: 8, duration: 0.6, ease: "power2.out" }, 15.7);
+      // status: pulsing "생성 중…" then swap to "완료" (element swap keeps it deterministic)
+      tl.to("#s4-busy .pip", { opacity: 0.35, duration: 0.45, ease: "sine.inOut", yoyo: true, repeat: 9 }, 15.0);
+      tl.set("#s4-busy", { autoAlpha: 0 }, 19.8);
+      tl.set("#s4-done", { autoAlpha: 1 }, 19.8);
+      tl.from("#s4-done", { scale: 0.85, duration: 0.4, ease: "back.out(1.7)" }, 19.8);
+      // mid-scene: Ken Burns push on the panel stack
+      tl.fromTo("#s4-stack", { scale: 0.985 }, { scale: 1.03, duration: 7, ease: "none" }, 14.8);
+
+      // === SCENE 5 (21.8-27.0s) · 변형안 ===
+      tl.from("#s5-headline", { y: 14, autoAlpha: 0, duration: 0.6, ease: "power3.out" }, 22.1);
+      tl.from(
+        ["#s5-c1", "#s5-c2", "#s5-c3"],
+        { y: 26, autoAlpha: 0, duration: 0.6, ease: "power3.out", stagger: { each: 0.3, from: "start" } },
+        22.3
+      );
+      // selection ring lands on 02
+      tl.fromTo(
+        "#s5-sel",
+        { opacity: 0, scale: 0.96 },
+        { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.4)" },
+        24.4
+      );
+      // mid-scene: settle from a slight pull-back, then keep breathing
+      tl.fromTo("#s5-wrap", { scale: 1.06 }, { scale: 1, duration: 0.9, ease: "power2.out" }, 21.8);
+      tl.to("#s5-wrap", { y: -8, duration: 4.3, ease: "sine.inOut" }, 22.7);
+
+      // === SCENE 6 (27.0-31.6s) · 출력물 — SHADER ANCHOR, no exit tweens ===
+      tl.from("#s6-headline", { y: 14, autoAlpha: 0, duration: 0.6, ease: "power3.out" }, 27.25);
+      tl.from(
+        ["#s6-card1", "#s6-card2", "#s6-card3", "#s6-card4"],
+        { y: 30, autoAlpha: 0, duration: 0.6, ease: "power3.out", stagger: { each: 0.25, from: "start" } },
+        27.45
+      );
+      // mid-scene: slow drift upward
+      tl.to("#s6-wrap", { y: -10, duration: 4.6, ease: "sine.inOut" }, 27.0);
+
+      // === SCENE 7 (31.6-35s) · 사인오프 — final scene, revealed by shader ===
+      tl.from("#s7-dot", { scale: 0, duration: 0.7, ease: "back.out(1.7)" }, 31.7);
+      tl.from("#s7-wordmark", { y: 16, autoAlpha: 0, duration: 0.7, ease: "power3.out" }, 32.1);
+      tl.from("#s7-rule-l", { scaleX: 0, transformOrigin: "right", duration: 0.7, ease: "power2.out" }, 32.5);
+      tl.from("#s7-rule-r", { scaleX: 0, transformOrigin: "left", duration: 0.7, ease: "power2.out" }, 32.5);
+      tl.from("#s7-sub", { autoAlpha: 0, duration: 0.7, ease: "power2.out" }, 32.6);
+      tl.from("#s7-tagline", { y: 12, autoAlpha: 0, duration: 0.7, ease: "power2.out" }, 32.9);
+      // mid-scene: gentle breathing until the end
+      tl.to("#s7-group", { scale: 1.012, duration: 3.4, ease: "sine.inOut" }, 31.6);
+
+      window.__timelines["main"] = tl;
+
+      // --- Shader transitions: 3 key moments ---
+      // s3→s4 (hero build reveal), s4→s5 boundary (energy shift), s6→s7 (sign-off landing).
+      // Anchors follow the Skeleton-B pattern: one contiguous anchor list with the
+      // s5/s6 gap scenes handled by runtime autoAlpha toggles above.
+      window.HyperShader.init({
+        bgColor:
+          getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#EFEAE0",
+        scenes: ["s3", "s4", "s6", "s7"],
+        timeline: tl,
+        transitions: [
+          { time: 14.55, shader: "cinematic-zoom", duration: 0.5 },
+          { time: 21.55, shader: "light-leak", duration: 0.5 },
+          { time: 31.35, shader: "cross-warp-morph", duration: 0.5 },
+        ],
+      });
+    </script>
+  </body>
+</html>
